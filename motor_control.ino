@@ -52,11 +52,11 @@ float curVel1, curVel2;
 float targetPos = 0; //initial position of mouse is 0
 
 //u = Kp*e + Ki * integral(e) + Kd * de/dt
-
+//When doing a comma declaration, it'll automatically set the first value as 0, contrary to C
 float m1PrevError, m2PrevError = 0;
-float m1Kp, m2Kp = 3;
-float m1Ki, m2Ki = 1.2;
-float m1Kd, m2Kd = 0;
+float m1Kp = 3, m2Kp = 3;
+float m1Ki = 1.2, m2Ki = 1.2;
+float m1Kd = 0, m2Kd = 0;
 
 float m1P, m2P, m1I, m2I, m1D, m2D;
 
@@ -96,6 +96,18 @@ void M2_stop() {
   analogWrite(M2_IN_2, 0);
 }
 
+void left_turn(unsigned int m1PWM, unsigned int m2PWM){
+  //use IMU (gyroscope/Mag field) to turn?
+  //Right turn Mag value : 233 - 50, left turn 50 to -10. The values are realy wacky, and are affected by other magnetic options
+  //gyro gz does show when a turn is taking place, but it'll have to be timing based.
+  M1_backward(m1PWM);
+  M2_forward(m2PWM);
+}
+void right_turn(unsigned int m1PWM, unsigned int m2PWM){
+  M1_forward(m1PWM);
+  M2_backward(m2PWM);
+}
+
 void setup() {
   Serial.begin(115200); //sets up tick rate to transmit
   pinMode(M1_IN_1, OUTPUT);
@@ -113,7 +125,10 @@ void loop() {
   currTime = micros();
   m1CurrRead = enc1.read();
   m2CurrRead = -enc2.read(); //m2 is naturall negative
-
+  Serial.print(m1CurrRead);
+  Serial.print("\t");
+  Serial.print(m2CurrRead);
+  Serial.print("\n");
   m1AdjRead = m1CurrRead - m1PrevRead;
   float m1Pos = m1AdjRead * dist_per_tick;
   
@@ -137,9 +152,25 @@ void loop() {
   m2D = (m2Error - m2PrevError)/delTime;
   m2PrevError = m2Error;
 
-  m1PWM = -(m1P * m1Kp + m1I * m1Ki + m1D * m1Kd);
+  m1PWM = -((m1P * m1Kp) + (m1I * m1Ki) + (m1D * m1Kd));
   m2PWM = -(m2P * m2Kp + m2I * m2Ki + m2D * m2Kd);
 
+  Serial.print(m1PWM);
+  Serial.print('\t');
+  Serial.print(m1P*m1Kp);
+  Serial.print('\t');
+  Serial.print(m1I*m1Ki);
+  Serial.print('\t');
+  Serial.print(m1D*m1Kd);
+  Serial.print('\n');
+  Serial.print(m2PWM);
+  Serial.print('\t');
+  Serial.print(m2P);
+  Serial.print('\t');
+  Serial.print(m2I);
+  Serial.print('\t');
+  Serial.print(m2D);
+  Serial.print('\n');
   if (m1PWM > MAX_PWM_VALUE) {
     m1PWM = MAX_PWM_VALUE;
   }
@@ -153,7 +184,7 @@ void loop() {
   if (m2PWM < 0) {
     m2PWM = 0;
   }
-
+  
   targetPos = targetPos + (targetVel * 100 * delTime);
   prevTime = currTime;
 
