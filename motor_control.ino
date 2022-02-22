@@ -1,5 +1,5 @@
 #include <Encoder.h>
-
+//Adafriut
 
 //For mouse 1, M1 is Left Motor, M2 is Right Motor
 const unsigned int M1_ENC_A = 6;
@@ -31,6 +31,8 @@ float m2AdjRead = 0;
 
 float m1PWM = 255;
 float m2PWM = 255;
+float prevM1PWM = m1PWM;
+float prevM2PWM = m2PWM;
 
 float prevTime = 0;
 float currTime = 0;
@@ -49,7 +51,7 @@ const float junction_ticks = 15;  //  514.5 ticks per 15 cm
 
 float targetVel = 0.2;
 float curVel1, curVel2;
-float targetPos = 0; //initial position of mouse is 0
+float targetPos1, targetPos2 = 0; //initial position of mouse is 0
 
 //u = Kp*e + Ki * integral(e) + Kd * de/dt
 //When doing a comma declaration, it'll automatically set the first value as 0, contrary to C
@@ -108,27 +110,25 @@ void right_turn(unsigned int m1PWM, unsigned int m2PWM){
   M2_backward(m2PWM);
 }
 
-void setup() {
-  Serial.begin(115200); //sets up tick rate to transmit
-  pinMode(M1_IN_1, OUTPUT);
-  pinMode(M1_IN_2, OUTPUT);
-  pinMode(M2_IN_1, OUTPUT);
-  pinMode(M2_IN_2, OUTPUT);
-  //initialize the encoder value on start up
-  m1PrevRead = enc1.read();
-  m2PrevRead = -enc2.read();
+//encoder changes by 200 to turn left and right
+void left90(){
+  PID_Move_Controller(-0.2, 0.2, 1);
+  delay(100);
+}
+void right90(){
+  PID_Move_Controller(0.2, -0.2, 1);
+  delay(100);
 }
 
-void loop() {
-  //M1_stop();
-  //M2_stop();
+void move_forward(){
+  PID_Move_Controller(0.2, 0.2, 1);
+  delay(100);
+}
+
+void PID_Move_Controller(float targetVel1, float targetVel2, int turn){
   currTime = micros();
   m1CurrRead = enc1.read();
   m2CurrRead = -enc2.read(); //m2 is naturall negative
-  Serial.print(m1CurrRead);
-  Serial.print("\t");
-  Serial.print(m2CurrRead);
-  Serial.print("\n");
   m1AdjRead = m1CurrRead - m1PrevRead;
   float m1Pos = m1AdjRead * dist_per_tick;
   
@@ -139,22 +139,30 @@ void loop() {
   delTime = (currTime - prevTime)/ 1e6;
 
 
-  float m1Error = m1Pos - targetPos;
-  float m2Error = m2Pos - targetPos;
+  float m1Error = m1Pos - targetPos1;
+  float m2Error = m2Pos - targetPos2;
 
   m1P = m1Error;
   m1I = m1I + (m1Error * delTime);
   m1D = (m1Error - m1PrevError)/delTime;
-  m1PrevError = m1Error;
+  
 
   m2P = m2Error;
   m2I = m2I + (m2Error * delTime);
   m2D = (m2Error - m2PrevError)/delTime;
+
+
+  if( (abs(m1Error) < 1) && (abs(m2Error) < 1)){
+    m1PWM = prevM1PWM;
+    m2PWM = prevM2PWM;
+  }else{
+    m1PWM = -((m1P * m1Kp) + (m1I * m1Ki) + (m1D * m1Kd));
+    m2PWM = -(m2P * m2Kp + m2I * m2Ki + m2D * m2Kd);
+  }
+
+  m1PrevError = m1Error;
   m2PrevError = m2Error;
-
-  m1PWM = -((m1P * m1Kp) + (m1I * m1Ki) + (m1D * m1Kd));
-  m2PWM = -(m2P * m2Kp + m2I * m2Ki + m2D * m2Kd);
-
+  Serial.print("m1PWM:");
   Serial.print(m1PWM);
   Serial.print('\t');
   Serial.print(m1P*m1Kp);
@@ -163,6 +171,7 @@ void loop() {
   Serial.print('\t');
   Serial.print(m1D*m1Kd);
   Serial.print('\n');
+  Serial.print("m2PWM:");
   Serial.print(m2PWM);
   Serial.print('\t');
   Serial.print(m2P);
@@ -171,6 +180,9 @@ void loop() {
   Serial.print('\t');
   Serial.print(m2D);
   Serial.print('\n');
+
+  
+  
   if (m1PWM > MAX_PWM_VALUE) {
     m1PWM = MAX_PWM_VALUE;
   }
@@ -185,11 +197,44 @@ void loop() {
     m2PWM = 0;
   }
   
-  targetPos = targetPos + (targetVel * 100 * delTime);
+  targetPos1 = targetPos1 + (targetVel1 * 100 * delTime);
+  targetPos2 = targetPos2 + (targetVel2 * 100 * delTime);
   prevTime = currTime;
 
-  M1_forward(m1PWM);
-  M2_forward(m2PWM);
+  prevM1PWM = m1PWM;
+  prevM2PWM = m2PWM;
+  switch(turn){
+    case 1:
+      M1_forward(m1PWM);
+      M2_forward(m2PWM);
+      break;
+    case 2:
+      M1_forward(m1PWM);
+      M2_backward(m2PWM);
+      break;
+    case 3:
+      M1_backward(m1PWM);
+      M2_forward(m2PWM);
+      break;
+  }
+}
+void setup() {
+  Serial.begin(115200); //sets up tick rate to transmit
+  pinMode(M1_IN_1, OUTPUT);
+  pinMode(M1_IN_2, OUTPUT);
+  pinMode(M2_IN_1, OUTPUT);
+  pinMode(M2_IN_2, OUTPUT);
+  //initialize the encoder value on start up
+  m1PrevRead = enc1.read();
+  m2PrevRead = -enc2.read();
+}
+
+void loop() {
+  //M1_stop();
+  //M2_stop();
+
+  move_forward();
+  //left90();
   
   //Left motor is definitely faster/stronger
   delM1Pos = (m1CurrRead - m1PrevRead)/(currTime - prevTime); // velocity (delx/delt) = 0.003864
