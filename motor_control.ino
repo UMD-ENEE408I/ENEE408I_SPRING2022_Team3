@@ -69,8 +69,8 @@ float m1Kp = 3;
 float m2Kp = 3;
 float m1Ki = 1.2;
 float m2Ki = 1.2;
-float m1Kd = 0;
-float m2Kd = 0;
+float m1Kd = 0.0;
+float m2Kd = 0.0;
 
 float m1P, m2P, m1I, m2I, m1D, m2D;
 
@@ -78,7 +78,7 @@ float m1P, m2P, m1I, m2I, m1D, m2D;
 
 const float M_I_COUNTS_TO_A = (3.3 / 1024.0) / 0.120; //roughly 0.02685
 
-const unsigned int MAX_PWM_VALUE = 126; //PMW Value needs to be variable, effected by the Mx_I_Counts
+const unsigned int MAX_PWM_VALUE = 255; //PMW Value needs to be variable, effected by the Mx_I_Counts
 
 void M1_backward(unsigned int PWM_VALUE) {
   ledcWrite(M1_IN_1_CHANNEL, PWM_VALUE);
@@ -126,12 +126,11 @@ void PID_Move_Controller(float targetVel1, float targetVel2, int turn){
   currTime = micros();
 //  m1CurrRead = enc1.read();
 //  m2CurrRead = -enc2.read(); //m2 is naturally negative
-  m1AdjRead = m1CurrRead - m1PrevRead;
+  m1AdjRead = m1CurrRead - m1PrevRead; //prevRead basically initRead
   float m1Pos = m1AdjRead * dist_per_tick;
   
   m2AdjRead = m2CurrRead - m2PrevRead;
-  float m2Pos = m2AdjRead * dist_per_tick;
-
+  float m2Pos = -m2AdjRead * dist_per_tick;
 
   delTime = (currTime - prevTime)/ 1e6;
 
@@ -149,18 +148,12 @@ void PID_Move_Controller(float targetVel1, float targetVel2, int turn){
   m2D = (m2Error - m2PrevError)/delTime;
 
 
-  //if( (abs(m1Error) < 1) && (abs(m2Error) < 1)){
-  //  m1PWM = prevM1PWM;
-  //  m2PWM = prevM2PWM;
-  //}else{
   m1PWM = -((m1P * m1Kp) + (m1I * m1Ki) + (m1D * m1Kd));
-  m2PWM = -(m2P * m2Kp + m2I * m2Ki + m2D * m2Kd);
-  //}
-
+  m2PWM = -((m2P * m2Kp) + (m2I * m2Ki) + (m2D * m2Kd));
+  
   m1PrevError = m1Error;
   m2PrevError = m2Error;
-
-  
+  /*
   Serial.print("m1PWM:");
   Serial.print(m1PWM);
   Serial.print('\t');
@@ -169,17 +162,16 @@ void PID_Move_Controller(float targetVel1, float targetVel2, int turn){
   Serial.print(m1I*m1Ki);
   Serial.print('\t');
   Serial.print(m1D*m1Kd);
-  Serial.print('\n');
-  Serial.print("m2PWM:");
+  Serial.print('\t');
+  */
+  Serial.print("calculated m2PWM:");
   Serial.print(m2PWM);
   Serial.print('\t');
-  Serial.print(m2P);
+  Serial.print(m2P*m2Kp);
   Serial.print('\t');
-  Serial.print(m2I);
+  Serial.print(m2I*m2Ki);
   Serial.print('\t');
-  Serial.print(m2D);
-  Serial.print('\n');
-
+  Serial.print(m2D*m2Kd);
   
   
   if (m1PWM > MAX_PWM_VALUE) {
@@ -200,11 +192,23 @@ void PID_Move_Controller(float targetVel1, float targetVel2, int turn){
   targetPos2 = targetPos2 + (targetVel2 * 100 * delTime);
   prevTime = currTime;
 
-//  prevM1PWM = m1PWM;
-//  prevM2PWM = m2PWM;
+  //Serial.print("m1PWM:");
+  //Serial.print(m1PWM);
+  Serial.print("\t actual m2PWM:");
+  Serial.print(m2PWM);
+  //Serial.print("\t");
+  //Serial.print("targetpos1:");
+  //Serial.print(targetPos1);
+  Serial.print("\t targetpos2:");
+  Serial.print(targetPos2);
+  //Serial.print("\t curpos1:");
+  //Serial.print(m1Pos);
+  Serial.print("\t curpos2:");
+  Serial.print(m2Pos);
 
-//  M1_forward(m1PWM);
-//  M2_forward(m2PWM);
+  Serial.print("\n");
+    
+
   switch(turn){
     case 1:
       M1_forward(m1PWM);
@@ -235,9 +239,9 @@ void right90(){
 
 void move_forward(){
   PID_Move_Controller(0.2, 0.2, 1);
-  delay(500);
-  M1_stop();
-  M2_stop();
+  //delay(500);
+  //M1_stop();
+  //M2_stop();
 }
 
 void setup() {
@@ -260,47 +264,9 @@ void setup() {
   pinMode(M1_I_SENSE, INPUT);
   pinMode(M2_I_SENSE, INPUT);
 
-}
+} //m1 is stiffer than m2, needs to adjust m1 to have higher PWM using the p,i,d variables
 
 void loop() {
-
-  /* 
-  //this is the motor test for the esp32 from the TA's repo. When ran on my individual mouse, only M1 turns, and it also
-  //only turns backwards. However, if i were to run my own code/test, only M2 turns, and M1 stays absolutely still
-  //Both M1PWM and M2PWM are positive values, as tested through M2, since M1 refuses to move. I've actually got no clue what's wrong
-  M1_stop();
-  M2_stop();
-
-  delay(5000);
-  
-  M1_forward(MAX_PWM_VALUE);
-  M2_forward(MAX_PWM_VALUE);
-
-  for(int i = 0; i < 500; i++) { 
-    // 2/7/22 Levi: these are reading zero,
-    // these pins use a very low voltage and
-    // according to this resource the pins may not be
-    // be able to read voltages below 100mV
-    // https://deepbluembedded.com/esp32-adc-tutorial-read-analog-voltage-arduino/
-    // Nobody used motor current last semester so ignore for now
-    int M1_I_counts = analogRead(M1_I_SENSE);
-    int M2_I_counts = analogRead(M2_I_SENSE);
-
-    Serial.print(M1_I_counts);
-    Serial.print("\t");
-    Serial.print(M1_I_counts * M_I_COUNTS_TO_A);
-    Serial.print("\t");
-    Serial.print(M2_I_counts);
-    Serial.print("\t");
-    Serial.print(M2_I_counts * M_I_COUNTS_TO_A);
-    Serial.println();
-    delay(1);
-  }
-
-  M1_backward(MAX_PWM_VALUE);
-  M2_backward(MAX_PWM_VALUE);
-  delay(500);
-  */
 
   Encoder enc1(M1_ENC_A, M1_ENC_B);
   Encoder enc2(M2_ENC_A, M2_ENC_B);
@@ -310,24 +276,32 @@ void loop() {
 
   //M1_stop();
   //M2_stop();
-
   while(true){
-    m1CurrRead = enc1.read();
-    m2CurrRead = -enc2.read(); //m2 is naturally negative
-    move_forward();
-    delay(1000);
-    m1CurrRead = enc1.read();
-    m2CurrRead = -enc2.read(); //m2 is naturally negative
-    left90();
-    delay(75);
+    
+    //Need to set this as a function for forward movement
+    prevTime = micros();
+    targetPos1 = enc1.read()*dist_per_tick;
+    targetPos2 = enc2.read()*dist_per_tick;
+    Serial.print("\n");
+    Serial.print(targetPos2);
+    Serial.print("\n");
+    for(int i = 0; i < 500; i++){
+      m1CurrRead = enc1.read();
+      m2CurrRead = -enc2.read(); //m2 is naturally negative
+      move_forward();
+      delay(1);
+    }
+
+    //duplicate everything we do above for left and right turning (put in to for loop with delay (1) instead of flat delay75 or else encoder isnt updated enough times
+    //m1CurrRead = enc1.read();
+    //m2CurrRead = -enc2.read(); //m2 is naturally negative
+    //left90();
+    //delay(75);
     
     M1_stop();
     M2_stop();
     delay(5000);
     
-    //Left motor is definitely faster/stronger
-    delM1Pos = (m1CurrRead - m1PrevRead)/(currTime - prevTime); // velocity (delx/delt) = 0.003864
-    delM2Pos = (m2CurrRead - m2PrevRead)/(currTime - prevTime); // velocity (delx/delt) = 0.003647
   }
 
 }
