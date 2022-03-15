@@ -11,10 +11,10 @@ y2 = 450
 lr_offset = 10
 lr_length = 100
 lr_height = 30
+lr_bottom = 50
 ud_offset = 20
 ud_length = 10
 ud_height = 50
-
 
 # Define upper and lower threshold for detecting white on black
 lower_threshold = np.array([0, 0, 215])
@@ -57,9 +57,53 @@ def draw_roi(img, x1, x2, y1, y2, f_flag):
     return new_img
 
 
-def draw_intersect_roi(img, lr_offset, lr_length, lr_height, ud_offset, ud_length, ud_height):
-    height, width = img.size
-    print(img.size)
+def draw_intersect_roi(img, lr_offset, lr_length, lr_height, lr_bottom, ud_offset, ud_length, ud_height):
+    height, width = img.shape
+    print(img.shape)
+
+    color = (255, 0, 0)
+
+    # v_midpoint = height/2
+    h_midpoint = width / 2
+
+    l_box.x1 = h_midpoint + lr_offset
+    l_box.x2 = h_midpoint + lr_offset + lr_length
+
+    l_box.y1 = lr_bottom
+    l_box.y2 = lr_bottom + lr_height
+
+    r_box.x1 = h_midpoint - lr_offset
+    r_box.x2 = h_midpoint - lr_offset - lr_length
+
+    r_box.y1 = lr_bottom
+    r_box.y2 = lr_bottom + lr_height
+
+    f_box.x1 = h_midpoint + ud_offset
+    f_box.x2 = h_midpoint - ud_offset
+
+    f_box.y1 = ud_length
+    f_box.y2 = ud_length + ud_height
+
+    # Define coord start/end for cv2.rectangle
+    l_box_start = (l_box.x1, l_box.y1)
+    l_box_end = (l_box.x2, l_box.y2)
+
+    r_box_start = (r_box.x1, r_box.y1)
+    r_box_end = (r_box.x2, r_box.y2)
+
+    f_box_start = (f_box.x1, f_box.y1)
+    f_box_end = (f_box.x2, f_box.y2)
+
+    # Create boxes
+    new_img = cv2.rectangle(img, l_box_start, l_box_end, color, 10)
+    new_img = cv2.rectangle(new_img, r_box_start, r_box_end, color, 10)
+    new_img = cv2.rectangle(new_img, f_box_start, f_box_end, color, 10)
+
+    return new_img
+
+
+def send_command(command):
+    # Send command
 
 
 def main():
@@ -75,8 +119,7 @@ def main():
 
         frame = draw_roi(img_thresh, x1, x2, y1, y2, forwardflag)
 
-        frame = draw_intersect_roi(frame, lr_offset, lr_length, lr_height, ud_offset, ud_length, ud_height)
-
+        frame = draw_intersect_roi(frame, lr_offset, lr_length, lr_height, lr_bottom, ud_offset, ud_length, ud_height)
 
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
