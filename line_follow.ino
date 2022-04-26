@@ -45,14 +45,31 @@ const int center_pos = 6;
 //u = Kp*e + Ki * integral(e) + Kd * de/dt
 //When doing a comma declaration, it'll automatically set the first value as 0, contrary to C
 float errorSig = 0;
+float errorSig2 = 0;
+
 float Kp = 1;  //the Kp value cannot be too low or else not enough pwm is supplied to the motors, it'll hover at 60-70, as opposed to 90-120
 float Ki = 0.0; //1.3
 float Kd = 0.2;
 float prevError = 0;
 
-float P,I,D;
+//trying two loop pid
+float m1PrevError = 0;
+float m2PrevError = 0;
+float m1Kp = 3;
+float m2Kp = 3;
+float m1Ki = 0.4;
+float m2Ki = 0.4;
+float m1Kd = 0.0;
+float m2Kd = 0.1;
+
+float m1P, m2P, m1I, m2I, m1D, m2D;
+
+
+float P,D;
+float I = 70;
 float avg_pos;
 float pos_control;
+float pos_control2;
 
 float prevTime = 0;
 float currTime = 0;
@@ -158,7 +175,7 @@ void loop() {
   }*/
   for (int i = 0; i < 13; i++){
     //if(adcfull[i] > wht_val[i] - 20 && adcfull[i] < wht_val[i] + 20){
-    if(adcfull[i] < 200){  //the line above has been commented out because the difference between black and tape is super high
+    if(adcfull[i] < 250){  //the line above has been commented out because the difference between black and tape is super high
       adc_loc[i] = true;
       avg_pos += i;
       count++; //this measures how many sensors are turned on at a time. useful for junction and left right decisions. 
@@ -167,20 +184,29 @@ void loop() {
   if(count > 0){ //in bound
     avg_pos = avg_pos/count;
     errorSig = avg_pos - center_pos;
+    errorSig2 = center_pos - avg_pos;
   } else { //out of bound
     avg_pos = 100;
+    errorSig = 0;
     errorSig = 0;
   }
   
 
   delTime = (t_end - t_start)/1e4;
 
-  P = errorSig;
-  I = I + (errorSig * delTime);  //Integrator portion turned off as it provides nothing of value in this situation
-  D = (errorSig - prevError)/delTime;  //this makes the changes in the calculated pwm a little smoother
+  m1P = errorSig;
+  m1I = m1I + (errorSig * delTime);  //Integrator portion turned off as it provides nothing of value in this situation
+  m1D = (errorSig - prevError)/delTime;  //this makes the changes in the calculated pwm a little smoother
   
-  pos_control = (P * Kp) + (I * Ki) + (D * Kd);
+  pos_control = (m1P * m1Kp) + (m1I * m1Ki) + (m1D * m1Kd);
   prevError = errorSig;
+
+  m2P = errorSig2;
+  m2I = m2I + (errorSig2 * delTime);  //Integrator portion turned off as it provides nothing of value in this situation
+  m2D = (errorSig2 - m2PrevError)/delTime;  //this makes the changes in the calculated pwm a little smoother
+  
+  pos_control2 = (m2P * m2Kp) + (m2I * m2Ki) + (m2D * m2Kd);
+  m2PrevError = errorSig2;
 
   if(count > 0){
     if(errorSig < 0){ //the right bar is lit, we need to turn right
@@ -200,8 +226,8 @@ void loop() {
       Serial.print("Straight\t");
       //do nothing
     }
-    m1PWM -= pos_control;
-    m2PWM += pos_control;
+    m1PWM = pos_control;
+    m2PWM = -pos_control2;
     Serial.print(avg_pos);
     Serial.print('\t');
     Serial.print("m1PWM:");
