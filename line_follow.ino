@@ -57,13 +57,14 @@ float m1PrevError = 0;
 float m2PrevError = 0;
 float m1Kp = 3;
 float m2Kp = 3;
-float m1Ki = 0.4;
-float m2Ki = 0.4;
-float m1Kd = 0.0;
+float m1Ki = 1.3;
+float m2Ki = 1.3;
+float m1Kd = 0.1;
 float m2Kd = 0.1;
 
 float m1P, m2P, m1I, m2I, m1D, m2D;
-
+float m1I = 70;
+float m2I = 70;
 
 float P,D;
 float I = 70;
@@ -146,7 +147,7 @@ void setup() {
   
   adc1.begin(ADC_1_CS);  
   adc2.begin(ADC_2_CS);  
-  prevTime = micros();
+  prevTime = micros(); 
 }
 
 void loop() {
@@ -175,7 +176,7 @@ void loop() {
   }*/
   for (int i = 0; i < 13; i++){
     //if(adcfull[i] > wht_val[i] - 20 && adcfull[i] < wht_val[i] + 20){
-    if(adcfull[i] < 250){  //the line above has been commented out because the difference between black and tape is super high
+    if(adcfull[i] < 650){  //the line above has been commented out because the difference between black and tape is super high
       adc_loc[i] = true;
       avg_pos += i;
       count++; //this measures how many sensors are turned on at a time. useful for junction and left right decisions. 
@@ -226,8 +227,8 @@ void loop() {
       Serial.print("Straight\t");
       //do nothing
     }
-    m1PWM = pos_control;
-    m2PWM = -pos_control2;
+    m1PWM = pos_control2;
+    m2PWM = pos_control;
     Serial.print(avg_pos);
     Serial.print('\t');
     Serial.print("m1PWM:");
