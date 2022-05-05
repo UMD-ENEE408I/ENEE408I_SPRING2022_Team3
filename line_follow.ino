@@ -55,19 +55,19 @@ float prevError = 0;
 //trying two loop pid
 float m1PrevError = 0;
 float m2PrevError = 0;
-float m1Kp = 3;
-float m2Kp = 3;
+float m1Kp = 5;
+float m2Kp = 5;
 float m1Ki = 1.3;
 float m2Ki = 1.3;
 float m1Kd = 0.1;
 float m2Kd = 0.1;
 
-float m1P, m2P, m1I, m2I, m1D, m2D;
-float m1I = 70;
-float m2I = 70;
+float m1P, m2P, m1D, m2D;
+float m1I = 90;
+float m2I = 90;
 
 float P,D;
-float I = 70;
+float I = 90;
 float avg_pos;
 float pos_control;
 float pos_control2;
@@ -76,9 +76,10 @@ float prevTime = 0;
 float currTime = 0;
 float delTime = 0;
 
+int tick = 0;
 
 //AutoPID linePID();
-const unsigned int MAX_PWM_VALUE = 120; //PMW Value needs to be variable, effected by the Mx_I_Counts. We cap at 120 or else it'll spin wildly out of control
+const unsigned int MAX_PWM_VALUE = 200; //PMW Value needs to be variable, effected by the Mx_I_Counts. We cap at 120 or else it'll spin wildly out of control
 
 void M1_backward(unsigned int PWM_VALUE) {
   ledcWrite(M1_IN_1_CHANNEL, PWM_VALUE);
@@ -122,6 +123,41 @@ void right_turn(unsigned int m1PWM, unsigned int m2PWM){
   M2_backward(m2PWM);
 }
 
+int junction(boolean adc_loc[]){
+  int left_count  = 0;
+  int right_count = 0;
+  for(int i = 0; i < 5; i++){
+    if(adc_loc[i]){
+      left_count++;
+    }
+  }
+  for(int i = 6; i < 13; i++){
+    if(adc_loc[i]){
+      right_count++;
+    }
+  }
+
+  if(right_count > 3 || left_count > 3){
+    Serial.println("Junction");
+
+    /*
+    M1_stop();
+    M2_stop();
+    delay(500);
+    M1_backward(100);
+    M2_backward(100);
+    delay(200);
+    M1_stop();
+    M2_stop();
+    delay(100);
+    */
+
+
+    //Insert the Wifi Stuff to make the decision to turn left or right.
+    return 1;
+  }
+  return 0;
+}
 void setup() {
   // Stop the right motor by setting pin 14 low
   // this pin floats high or is pulled
@@ -180,18 +216,45 @@ void loop() {
       adc_loc[i] = true;
       avg_pos += i;
       count++; //this measures how many sensors are turned on at a time. useful for junction and left right decisions. 
+    }else{
+      adc_loc[i] = false;
     }
   }
+  int jflag = junction(adc_loc);
+
+  if(jflag == 1 && tick == 0){
+    M1_stop();
+    M2_stop();
+    delay(500);
+    M1_backward(100);
+    M2_backward(100);
+    delay(200);
+    M1_stop();
+    M2_stop();
+    delay(100);
+  }
+  Serial.print(jflag);
+  Serial.print("\t");
+  Serial.print(tick);
+  Serial.println();
   if(count > 0){ //in bound
-    avg_pos = avg_pos/count;
+    if(jflag == 1 && tick < 4){
+      avg_pos = 1; //turns right
+      tick++;
+    }else{
+      if(tick > 3){
+        tick = 0;
+      }
+      avg_pos = avg_pos/count;
+      jflag = 0;
+    }
     errorSig = avg_pos - center_pos;
     errorSig2 = center_pos - avg_pos;
   } else { //out of bound
     avg_pos = 100;
     errorSig = 0;
-    errorSig = 0;
-  }
-  
+    errorSig2 = 0;
+  }  
 
   delTime = (t_end - t_start)/1e4;
 
@@ -256,15 +319,24 @@ void loop() {
 
     M1_forward(m1PWM);
     M2_forward(m2PWM);
+    delay(100);
+    M1_stop();
+    M2_stop();
 
   }else{  //This where the error catching/decision making should be made. In this situation, the bot is likely off the line. The logic should be to reverse the operation of the previous movement, or just backup a set distance until count > 0.
     Serial.print("No Read\t");
-
+/*
     for (int i = 0; i < 8; i++) {
       Serial.print(adc1_buf[i]); Serial.print("\t");
       Serial.print(adc2_buf[i]); Serial.print("\t");
-    }
+    }*/
     Serial.println();
+    
+    M1_stop();
+    M2_stop();
+    M1_backward(100);
+    M2_backward(100);
+    delay(200);
     M1_stop();
     M2_stop();
     //stop
