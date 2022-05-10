@@ -60,11 +60,12 @@ void loop() {
       Serial.println(m1Curr - m1Prev);
       Serial.println(m2Curr - m2Prev);
   
-      while (client.available() == 0) {}
-      client.read();
+      //while (client.available() == 0) {}
+      //client.read();
       
       client.write(m1Curr - m1Prev);
       client.write(m2Curr - m2Prev);
+      client.write("N"); //type 0f turn -- aka L/R/S (1eft right straight)
     }
  
     client.stop();
