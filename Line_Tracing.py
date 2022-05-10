@@ -19,62 +19,62 @@ n2 = 0
 
 s = socket.socket()
 
-host =  "192.168.1.201"  # "192.168.2.104" #put IP address
+host =   "192.168.2.104" #  #put IP address "192.168.1.201"
 port = 80
 
 s.connect((host, port))
 i = 0
-while i < 1000:
+while i < 2000:
     i = i + 1
+    if i % 4 == 0:
     #n1 = (m1-m1Prev)*(11/360);
     #n2 = (m2-m2Prev)*(11/360);
-    n1 = n1*(11/360)
-    n2 = n2*(11/360)
-    if n1 == n2:
-        cX = cX + n1 * math.cos(theta*math.pi/180)
-        cY = cY + n1 * math.sin(theta*math.pi/180)
-    else:
-        if n1 < n2: #left turn
-            a = -1
-            smlTurn = n1
-            #print("1eft")
+        n1 = n1*(11/360)
+        n2 = n2*(11/360)
+        if n1 == n2:
+            cX = cX + n1 * math.cos(phi*math.pi/180)
+            cY = cY + n1 * math.sin(phi*math.pi/180)
         else:
-            a = 1
-            smlTurn = n2
-            #print("right")
+            if n1 < n2: #left turn
+                a = -1
+                smlTurn = n1
+                lrgTurn = n2
+            else:
+                a = 1
+                smlTurn = n2
+                lrgTurn = n1
 
-        r = 4*a*(n1 + n2)/(n1 - n2)
-        rX = cX + r * math.cos((phi-a*90) * (math.pi/180))
-        rY = cY + r * math.sin((phi-a*90) * (math.pi/180))
-        if r == 4:
-            r = r + .001
-        theta = 180*smlTurn/(2*math.pi*(r-4))
-        phi = phi - a*theta
-        cX_prev = cX
-        cY_prev = cY
-        cX = math.cos(theta*math.pi/180)*(cX - rX) + math.sin(theta*math.pi/180)*(cY - rY) + rX
-        cY = -math.sin(theta*math.pi/180)*(cX - rX) + math.cos(theta*math.pi/180)*(cY - rY) + rY
+            r = 4*a*(n1 + n2)/(n1 - n2)
+            rX = cX + r * math.cos((phi-a*90) * (math.pi/180))
+            rY = cY + r * math.sin((phi-a*90) * (math.pi/180))
+            if r == 4:
+                r = r + .001
+            theta = 180*smlTurn/(2*math.pi*(r-4))
+            if theta == 0:
+                phi = phi - (a*lrgTurn/8) * (180/math.pi)
+            else:
+                phi = phi - a*theta
+
+            cX_prev = cX
+            cY_prev = cY
+            cX = math.cos(theta*math.pi/180)*(cX - rX) + math.sin(theta*math.pi/180)*(cY - rY) + rX
+            cY = -math.sin(theta*math.pi/180)*(cX - rX) + math.cos(theta*math.pi/180)*(cY - rY) + rY
+            xVal.append(cX)
+            yVal.append(cY)
 
 
-    # c = [cosd(theta) -sind(theta); sind(theta) cosd(theta)]*(c - rcoord) + rcoord;
-
-
-    m1Prev = m1
-    m2Prev = m2
     data = []
     while len(data) < 2:
         data.append(s.recv(1))
 
-    n1 = int.from_bytes(data[0], "big", signed="True")
-    n2 = int.from_bytes(data[1], "big", signed="True")
-    #print(cX)
-    #print(cY)
-    xVal.append(cX)
-    yVal.append(cY)
+    n1 += int.from_bytes(data[0], "big", signed="True")
+    n2 += int.from_bytes(data[1], "big", signed="True")
 
 
-plt.xlim(-100,100)
-plt.ylim(-100,100)
+
+plt.xlim(-50,50)
+plt.ylim(-50,50)
+print(phi)
 
 plt.plot(xVal, yVal, color = 'red', marker = "o")
 plt.show()
