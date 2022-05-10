@@ -26,15 +26,7 @@ s.connect((host, port))
 i = 0
 while i < 2000:
     i = i + 1
-    if data[2] == "R":
-        phi += -90
-    else if data[2] == "L":
-        phi += 90
-    else if data[2] == "U": #uturn if implemented 
-        phi += 180
 
-    #n1 = (m1-m1Prev)*(11/360);
-    #n2 = (m2-m2Prev)*(11/360);
     n1 = n1*(11/360)
     n2 = n2*(11/360)
     if n1 == n2:
@@ -74,6 +66,12 @@ while i < 2000:
     n1 = int.from_bytes(data[0], "big", signed="True")
     n2 = int.from_bytes(data[1], "big", signed="True")
     print(data[2].decode("utf-8"))
+    if data[2] == "R":
+        phi += -90
+    elif data[2] == "L":
+        phi += 90
+    elif data[2] == "U": #uturn if implemented
+        phi += 180
     xVal.append(cX)
     yVal.append(cY)
 
