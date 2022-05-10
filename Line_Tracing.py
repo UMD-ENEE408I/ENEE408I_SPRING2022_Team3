@@ -26,6 +26,12 @@ s.connect((host, port))
 i = 0
 while i < 2000:
     i = i + 1
+    if data[2] == "R":
+        phi += -90
+    else if data[2] == "L":
+        phi += 90
+    else if data[2] == "U": #uturn if implemented 
+        phi += 180
 
     #n1 = (m1-m1Prev)*(11/360);
     #n2 = (m2-m2Prev)*(11/360);
