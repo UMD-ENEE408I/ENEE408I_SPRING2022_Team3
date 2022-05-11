@@ -372,10 +372,10 @@ void loop() {
 
     m1P = errorSig;
     m1I = m1I + (errorSig * delTime);  //Integrator portion turned off as it provides nothing of value in this situation
-    m1D = (errorSig - prevError)/delTime;  //this makes the changes in the calculated pwm a little smoother
+    m1D = (errorSig - m1PrevError)/delTime;  //this makes the changes in the calculated pwm a little smoother
   
     pos_control = (m1P * m1Kp) + (m1I * m1Ki) + (m1D * m1Kd);
-    prevError = errorSig;
+    m1PrevError = errorSig;
 
     m2P = errorSig2;
     m2I = m2I + (errorSig2 * delTime);  //Integrator portion turned off as it provides nothing of value in this situation
