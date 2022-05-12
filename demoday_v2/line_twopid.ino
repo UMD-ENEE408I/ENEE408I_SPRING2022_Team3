@@ -68,7 +68,7 @@ long m2AdjRead = 0;
 float lfm1errorSig = 0;
 float lfm1Kp = 0.8;  //the lfm1Kp value cannot be too low or else not enough pwm is supplied to the motors, it'll hover at 60-70, as opposed to 90-120
 float lfm1Ki = 0.02; //1.3
-float lfm1Kd = 4;
+float lfm1Kd = 1.9;
 float lfm1prevError = 0;
 
 float lfm1P,lfm1D;
@@ -80,7 +80,7 @@ float lfm1I;// = 90/lfm1Ki;
 float lfm2errorSig = 0;
 float lfm2Kp = 1;  //the lfm1Kp value cannot be too low or else not enough pwm is supplied to the motors, it'll hover at 60-70, as opposed to 90-120
 float lfm2Ki = 0.04; //1.3
-float lfm2Kd = 4;
+float lfm2Kd = 2;
 float lfm2prevError = 0;
 
 float lfm2P,lfm2D;
@@ -117,13 +117,13 @@ float m2PrevError = 0;
 float m1Kp = 0.3;
 float m2Kp = 0.4;
 float m1Ki = 0.2;
-float m2Ki = 0.27;
+float m2Ki = 0.5;
 float m1Kd = 0.1;
 float m2Kd = 0.1;
 
 float m1P, m2P, m1D, m2D;
 float m1I = -90/m1Ki;
-float m2I = -90/m2Ki;
+float m2I = -95/m2Ki;
 long randNum;
 
 const float M_I_COUNTS_TO_A = (3.3 / 1024.0) / 0.120; //roughly 0.02685
@@ -212,18 +212,18 @@ void PID_Move_Controller(float targetVel1, float targetVel2){
   m2PrevError = m2Error;
   
   
-  if (m1PWM > 120) {
-    m1PWM = 120;
-  }
-  if (m1PWM < 100) {
+  if (m1PWM > 100) {
     m1PWM = 100;
   }
-
-  if (m2PWM > 120) {
-    m2PWM = 120;
+  if (m1PWM < 80) {
+    m1PWM = 80;
   }
-  if (m2PWM < 100) {
+
+  if (m2PWM > 100) {
     m2PWM = 100;
+  }
+  if (m2PWM < 80) {
+    m2PWM = 80;
   }
   
   targetPos1 = (targetVel1 * 0.01 * delTime);
@@ -372,8 +372,8 @@ void loop() {
     lfm1errorSig = center_pos - avg_pos;
   } else { //out of bound
     avg_pos = center_pos;
-    lfm1errorSig = 0;
-    lfm2errorSig = 0;
+    lfm1errorSig = lfm1prevError;
+    lfm2errorSig = lfm2prevError;
   }
   
 
@@ -421,14 +421,16 @@ void loop() {
     Serial.print('\t');    
     Serial.print(m2pos_control);
     Serial.print('\n');
-    m1PWM += m1pos_control;
-    m2PWM += m2pos_control;
+    m1PWM = m1PWM * 0.5;
+    m2PWM = m2PWM * 0.5;
+    m1PWM += 8.3*m1pos_control;
+    m2PWM += 9*m2pos_control;
     
     if (m1PWM > MAX_PWM_VALUE) {
       m1PWM = MAX_PWM_VALUE;
     }
-    if (m1PWM < 90) {
-      m1PWM = 90;
+    if (m1PWM < 80) {
+      m1PWM = 80;
     }
   
     if (m2PWM > MAX_PWM_VALUE) {
@@ -446,7 +448,7 @@ void loop() {
     //lfm1errorSig = 0;
     //lfm2errorSig = 0;
     //not sure how this ^ might affect the new movement control
-    m1I = -100/m1Ki;
+    m1I = -90/m1Ki;
     m2I = -100/m2Ki;
 
 //    lfm1I = 90/lfm1Ki;
@@ -473,6 +475,18 @@ void loop() {
     M1_backward(120);
     M2_backward(120);
     delay(200);
+    M1_stop();
+    M2_stop();
+
+    if(lfm2errorSig > 0){
+      M1_backward(120);
+      M2_forward(120);
+      delay(100);
+    }else if(lfm1errorSig > 0){
+      M1_forward(120);
+      M2_backward(100);
+      delay(100);
+    }
     M1_stop();
     M2_stop();
     delay(500);    
